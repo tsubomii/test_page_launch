@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <script>
+      performance.mark("head script");
+    </script>
+    <script type="module">
+      performance.mark("loaded module");
+      window.onload = () =>
+        setTimeout(() => {
+          const ul = document.createElement("ul");
+          document.body.appendChild(ul);
+          for (let i = 0; i < 100; i++) {
+            const li = document.createElement("li");
+            li.textContent = i;
+            ul.appendChild(li);
+          }
+          performance.mark("initial_render_done");
+        }, 0);
+    </script>
+  </head>
+  <body>
+    <iframe src="frame.html"></iframe>
+  </body>
+</html>

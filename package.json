@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "chrome-debugging-client": "^1.2.0",
+    "devtools-protocol": "^0.0.770484",
+    "serve": "^11.3.0",
+    "serve-handler": "^6.1.2"
+  }
+}
