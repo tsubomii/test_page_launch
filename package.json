@@ -1,8 +1,16 @@
 {
+  "name": "test_page_launch",
+  "author": {
+    "name": "Kris Selden",
+    "email": "kris.selden@gmail.com"
+  },
+  "license": "BSD-2-Clause",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
-    "chrome-debugging-client": "^1.2.0",
+    "chrome-debugging-client": "^2.0.0",
     "devtools-protocol": "^0.0.770484",
-    "serve": "^11.3.0",
-    "serve-handler": "^6.1.2"
+    "debug": "^4.1.1"
   }
 }

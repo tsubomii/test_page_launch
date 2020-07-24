@@ -1,0 +1,10 @@
+{
+  "url": "https://www.linkedin.com/feed/",
+  "cookies": [
+    {
+      "name": "li_at",
+      "value": "VALUE_HERE",
+      "url": "https://www.linkedin.com"
+    }
+  ]
+}
