@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const debug = require("debug")("test_page_launch");
 
+const { measureIdleCPU } = require('./util');
+
 const INJECTED_SCRIPT = fs.readFileSync(
   path.join(__dirname, "injected.js"),
   "utf8"
@@ -15,7 +17,7 @@ async function main() {
     headless: true,
     // chromeExecutable: `/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary`,
     // stdio: "inherit",
-    // additionalArguments: ["--enable-logging", "--v=1"],
+    //additionalArguments: ["--enable-logging", "--v=1"],
   });
   try {
     const browser = chrome.connection;
@@ -123,6 +125,8 @@ async function main() {
       awaitPromise: true,
       returnByValue: true,
     });
+
+    await (page.send('Input.synthesizeScrollGesture', { x: 100, y: 100, xDistance: 0, yDistance: -500 }));
     console.log("stopping trace", result);
 
     const [{ stream: handle }] = await Promise.all([
@@ -137,6 +141,16 @@ async function main() {
     }
 
     console.log(await page.send("Performance.getMetrics"));
+
+    const cpuStats = await measureIdleCPU();
+
+    if (Array.isArray(cpuStats)) {
+      cpuStats.forEach((cpuData) => {
+        console.log(`${cpuData.name} process CPU percentage ${cpuData.cpu}`);
+      });
+    } else if (cpuStats && cpuStats.failed) {
+      console.log('failed to measure cpu stats');
+    }
 
     await browser.send("Target.disposeBrowserContext", {
       browserContextId,

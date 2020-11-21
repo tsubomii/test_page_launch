@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "chrome-debugging-client": "^2.0.0",
+    "d3-array": "^2.8.0",
+    "debug": "^4.1.1",
     "devtools-protocol": "^0.0.770484",
-    "debug": "^4.1.1"
+    "execa": "^4.0.3"
   }
 }
