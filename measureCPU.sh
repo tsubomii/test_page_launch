@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
- if [ -z $1 ]; then
+if [ -z $1 ]; then
      echo 'enter pid'
      exit 1
  fi
@@ -24,8 +24,10 @@ interval=$3
  result=""
 for i in $(eval echo "{$start..$snapshotTimes}")
   do
-  command=$(top -n 1 -p $pid -b|awk '{if(NR==8) print $9}')
-  result+="${command}"
+  commandStart=$(ps -p $pid -o cputime|tail -n 1)
+  sleep $(( interval / 1000 ))
+  commandEnd=$(ps -p $pid -o cputime|tail -n 1)
+  result+="${commandStart}-${commandEnd}"
   result+="\n"
   sleep $(( interval / 1000 ))
   done

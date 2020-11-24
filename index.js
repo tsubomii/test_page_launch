@@ -142,15 +142,17 @@ async function main() {
 
     console.log(await page.send("Performance.getMetrics"));
 
-    const cpuStats = await measureIdleCPU();
-
-    if (Array.isArray(cpuStats)) {
-      cpuStats.forEach((cpuData) => {
-        console.log(`${cpuData.name} process CPU percentage ${cpuData.cpu}`);
-      });
-    } else if (cpuStats && cpuStats.failed) {
-      console.log('failed to measure cpu stats');
-    }
+    await measureIdleCPU().then((cpuStats) => {
+      if (Array.isArray(cpuStats)) {
+        cpuStats.forEach((cpuData) => {
+          console.log(`${cpuData.name} process CPU percentage ${cpuData.cpu}`);
+        });
+      } else if (cpuStats && cpuStats.failed) {
+        console.log('failed to measure cpu stats');
+      }
+    }).catch((e) => {
+      console.log('Fail to measure cpu', e);
+    });
 
     await browser.send("Target.disposeBrowserContext", {
       browserContextId,

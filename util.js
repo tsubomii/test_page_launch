@@ -7,8 +7,10 @@ const execa = require('execa');
 const d3 = require('d3-array');
 
 const WAITTIME = 1000;
-const SNAPSHOT_TIMES = 16;
-const MEASURE_WINDOW = 1000;
+const SNAPSHOT_TIMES = 10;
+const MEASURE_WINDOW = 2000;
+const HOUR = 3600;
+const MINUTE = 60;
 const TRACEFILEPATH = './traces/trace.json';
 /**
  * @param {string} path - the directory path or file path
@@ -88,27 +90,98 @@ function extractPid() {
   }
 }
 
+function isValidData(data) {
+  return (data !== null && data !== '' && typeof data !== 'undefined');
+}
+
+function parseCPUdata(data) {
+  let startCpu;
+  let endCpu;
+  let cpuData = [];
+  data.forEach(measure => {
+    [startCpu, endCpu] = measure.split('-').map(item => item.trim());
+    if (isValidData(startCpu) && isValidData(endCpu)) {
+      cpuData.push({ startCpu, endCpu });
+    }
+  });
+  return cpuData;
+}
+
+async function measure(pid, msg) {
+  try {
+    const fileName = path.join(__dirname, './measureCPU.sh');
+    const data = await executeCmd(`${fileName} ${pid} ${SNAPSHOT_TIMES} ${MEASURE_WINDOW}` , { shell: true });
+    //const data = await executeCmd(`ps -p ${pid} -o pcpu,cputime,etime`, { shell: true });
+    console.log(msg, data);
+    let cpuData = [];
+
+    const measureList = data.stdout.split('\\n');
+    if (Array.isArray(measureList)) {
+      cpuData = parseCPUdata(measureList);
+      //console.log('!!! cpu data', cpuData);
+      return cpuData;
+    }
+  } catch (e) {
+    console.log(`fail to ${msg}`,e);
+  }
+}
+
+
+function convertCputimeToMill(data) {
+  let cpuTime = data.split(':').map((item) => {
+    try {
+      //console.log(`convert time ${item} ${parseFloat(item)}`);
+      return parseFloat(item);
+    } catch(e) {
+      console.log('fail to convert time', e);
+      return NaN;
+    }
+  });
+  if (Array.isArray(cpuTime)) {
+    if (cpuTime.length === 3) {
+      return (cpuTime[0] * HOUR + cpuTime[1] * MINUTE + cpuTime[2]) * 1000;
+    } else if (cpuTime.length === 2) {
+      return (cpuTime[0] * MINUTE + cpuTime[1]) * 1000;
+    } else {
+      return cpuTime[0] * 1000;
+    }
+  } else {
+    return NaN;
+  }
+}
+function calculatePCPU(cpuData) {
+  let pcpu;
+  let computedData;
+  if (Array.isArray(cpuData)) {
+    computedData = cpuData.map(item => {
+      const startCpuTime = convertCputimeToMill(item.startCpu);
+      const endCpuTime = convertCputimeToMill(item.endCpu);
+     // console.log(`start time ${startCpuTime} end time ${endCpuTime}`);
+      return (Math.abs(endCpuTime - startCpuTime) / MEASURE_WINDOW) * 100;
+    });
+    //pcpu = d3.quantile(computedData, 0.75);
+    pcpu = d3.median(computedData);
+    //pcpu = d3.mean(computedData);
+  } else {
+    return NaN;
+  }
+  return pcpu;
+}
 async function getCPUStats(pidList, resolve, reject) {
   const cpuStats = [];
-
-  pidList.forEach(async (item) => {
+  await pidList.forEach(async (item) => {
     try {
-      //result = await executeCmd(`ps -eo pcpu,pid,user,args |grep ${item.pid} |awk '{print $1}'`, {shell: true});
-      //result = await executeCmd(`top -n 1 -p ${item.pid} -b|tail -n 1|cut -d' ' -f 14`, {shell: true});
-      //result = await executeCmd(`top -n 1 -p ${item.pid} -b|awk '{if(NR==8) print $9}'`, {shell: true});
-      const fileName = path.join(__dirname, './measureCPU.sh');
-      const result = await executeCmd(`${fileName} ${item.pid} ${SNAPSHOT_TIMES} ${MEASURE_WINDOW}`, { shell: true });
-      console.log(result);
-      const resultList = result.stdout.split('\\n');
-      //console.log(`!!!!!!stdout ${resultList[0]}`);
-      if (Array.isArray(resultList)) {
-        //cpuStats.push({ name: item.name, cpu: d3.mean(resultList) });
-        //cpuStats.push({ name: item.name, cpu: d3.median(resultList) });
-        cpuStats.push({ name: item.name, cpu: d3.quantile(resultList, 0.75) });
-      } else {
-        cpuStats.push({ name: item.name, cpu: resultList[0] });
+      const cpuData = await measure(item.pid, `${item.name} measurement: `);
+      const pcpu = calculatePCPU(cpuData);
+     // console.log(`${item.name} calculated pcpu ${pcpu}`);
+      if (pcpu !== NaN) {
+        cpuStats.push({
+          name: item.name,
+          cpu: pcpu
+        });
       }
     } catch (e) {
+      console.log(e);
       reject(e);
     }
   });
@@ -117,8 +190,8 @@ async function getCPUStats(pidList, resolve, reject) {
 
 async function measureIdleCPU() {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      getCPUStats(extractPid(), resolve, reject);
+    setTimeout(async () => {
+      await getCPUStats(extractPid(), resolve, reject);
     }, WAITTIME);
   });
 }
